@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:sdihc/auth/authGate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -25,15 +28,11 @@ class _RegisterPageState extends State<RegisterPage> {
         password: _passwordController.text.trim(),
       );
 
-      // Check if user is created successfully
       final user = response.user;
+
       if (user == null) {
-        // Signup failed
-        final String errorMessage = response.session == null
-            ? 'Signup failed. Please try again.'
-            : 'Unknown error occurred.';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
+          const SnackBar(content: Text('Signup failed. Please try again.')),
         );
         setState(() {
           _isLoading = false;
@@ -50,14 +49,13 @@ class _RegisterPageState extends State<RegisterPage> {
       final profileResponse = await _supabase.from('profiles').insert({
         'user_id': user.id,
         'class_id': classId,
-      });
+        'full_name': _fullNameController.text.trim(),
+      }).execute();
 
-      // Check for profile creation error
-      if (profileResponse.error != null) {
+      if (profileResponse.status != 201) {
+        print('Error creating profile:');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'Error creating profile: ${profileResponse.error!.message}')),
+          const SnackBar(content: Text('Error creating profile.')),
         );
         setState(() {
           _isLoading = false;
@@ -65,13 +63,57 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
-      // Registration successful
+      // Generate a 6-digit join code
+      final String joinCode =
+          (100000 + (DateTime.now().millisecondsSinceEpoch % 900000))
+              .toString();
+
+      // Create an organization for the new user with the join code
+      final organizationResponse =
+          await _supabase.from('organizations').insert({
+        'name': '${_fullNameController.text.trim()}\'s Organization',
+        'owner_id': user.id,
+        'join_code': joinCode,
+      }).execute();
+
+      if (organizationResponse.status != 201) {
+        print('Error creating organization:');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error creating organization:')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Add user to their new organization as an owner
+      final membershipResponse =
+          await _supabase.from('user_organization_membership').insert({
+        'user_id': user.id,
+        'organization_id': organizationResponse.data[0]
+            ['id'], // Use the id from the organization insert
+        'role': 'owner',
+      }).execute();
+
+      if (membershipResponse.status != 201) {
+        print('Error adding user to organization: ');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error adding user to organization.')),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registration successful!')),
       );
-      Navigator.pop(context); // Navigate back to the previous screen
+      Navigator.push(
+          context, MaterialPageRoute(builder: (context) => const AuthGate()));
     } catch (e) {
-      // Handle exceptions
+      print('Exception during registration: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
