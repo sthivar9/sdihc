@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sdihc/auth/authGate.dart';
 import 'package:sdihc/pages/functionPages/edit_organize_page.dart';
+import 'package:sdihc/pages/functionPages/organization_memberScreen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -246,16 +247,31 @@ class _ProfilePageState extends State<ProfilePage> {
                       SizedBox(
                         height: 20,
                       ),
-                      ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      const EditOrganizationPage()),
-                            );
-                          },
-                          child: Text("Edit Organizations"))
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const EditOrganizationPage()),
+                              );
+                            },
+                            child: Text("Edit Organizations"),
+                          ),
+                          ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          const OrganizationMembersScreen()),
+                                );
+                              },
+                              child: Text("see members")),
+                        ],
+                      )
                     ],
                   ),
                 ),

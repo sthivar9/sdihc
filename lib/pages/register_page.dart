@@ -21,24 +21,51 @@ class _RegisterPageState extends State<RegisterPage> {
       _isLoading = true;
     });
 
+    // Input validation
+    if (_emailController.text.trim().isEmpty ||
+        !_emailController.text.trim().contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email address.')),
+      );
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (_passwordController.text.trim().length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Password must be at least 6 characters long.')),
+      );
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (_fullNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your full name.')),
+      );
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
     try {
-      // Sign up the user in Supabase
+      // Sign up the user
       final AuthResponse response = await _supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      final user = response.user;
-
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Signup failed. Please try again.')),
-        );
-        setState(() {
-          _isLoading = false;
-        });
-        return;
+      if (response.user == null) {
+        throw Exception('Signup failed. User is null.');
       }
+
+      final user = response.user!;
 
       // Generate an 8-digit class ID
       final String classId =
@@ -53,67 +80,81 @@ class _RegisterPageState extends State<RegisterPage> {
       }).execute();
 
       if (profileResponse.status != 201) {
-        print('Error creating profile:');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error creating profile.')),
-        );
-        setState(() {
-          _isLoading = false;
-        });
-        return;
+        throw Exception(
+            'Failed to create profile. Status: ${profileResponse.status}');
       }
 
-      // Generate a 6-digit join code
-      final String joinCode =
-          (100000 + (DateTime.now().millisecondsSinceEpoch % 900000))
-              .toString();
+      // Generate a 6-digit join code (as an integer)
+      final int joinCode =
+          100000 + (DateTime.now().millisecondsSinceEpoch % 900000);
 
       // Create an organization for the new user with the join code
-      final organizationResponse =
-          await _supabase.from('organizations').insert({
+      print('Inserting organization with data:');
+      print({
         'name': '${_fullNameController.text.trim()}\'s Organization',
         'owner_id': user.id,
         'join_code': joinCode,
-      }).execute();
+      });
+
+      final organizationResponse = await _supabase
+          .from('organizations')
+          .insert({
+            'name': '${_fullNameController.text.trim()}\'s Organization',
+            'owner_id': user.id,
+            'join_code': joinCode,
+          })
+          .select() // Add this line to return the inserted row
+          .execute();
+
+      print('Organization Response Status: ${organizationResponse.status}');
+      print('Organization Response Data: ${organizationResponse.data}');
 
       if (organizationResponse.status != 201) {
-        print('Error creating organization:');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating organization:')),
-        );
-        setState(() {
-          _isLoading = false;
-        });
-        return;
+        throw Exception(
+            'Failed to create organization. Status: ${organizationResponse.status}');
+      }
+
+      if (organizationResponse.data == null ||
+          organizationResponse.data.isEmpty) {
+        throw Exception(
+            'Failed to create organization. Response data is null or empty.');
+      }
+
+      final organizationId = organizationResponse.data[0]['id'];
+      if (organizationId == null) {
+        throw Exception('Organization ID is null.');
       }
 
       // Add user to their new organization as an owner
       final membershipResponse =
           await _supabase.from('user_organization_membership').insert({
         'user_id': user.id,
-        'organization_id': organizationResponse.data[0]
-            ['id'], // Use the id from the organization insert
+        'organization_id': organizationId,
         'role': 'owner',
       }).execute();
 
       if (membershipResponse.status != 201) {
-        print('Error adding user to organization: ');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error adding user to organization.')),
-        );
-        setState(() {
-          _isLoading = false;
-        });
-        return;
+        throw Exception(
+            'Failed to add user to organization. Status: ${membershipResponse.status}');
       }
 
+      // Show success message and navigate to the next screen
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registration successful!')),
       );
       Navigator.push(
-          context, MaterialPageRoute(builder: (context) => const AuthGate()));
+        context,
+        MaterialPageRoute(builder: (context) => const AuthGate()),
+      );
+    } on AuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Auth Error: ${e.message}')),
+      );
+    } on PostgrestException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Database Error: ${e.message}')),
+      );
     } catch (e) {
-      print('Exception during registration: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
