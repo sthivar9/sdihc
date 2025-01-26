@@ -39,45 +39,32 @@ class _EditOrganizationPageState extends State<EditOrganizationPage> {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('Authentication required');
 
-      if (joinCode.isEmpty || !RegExp(r'^\d{6}$').hasMatch(joinCode)) {
-        throw FormatException('Invalid 6-digit code');
-      }
+      // Delete any existing organization membership
+      await _supabase
+          .from('user_organization_membership')
+          .delete()
+          .eq('user_id', user.id);
 
-      final numericCode = int.parse(joinCode);
-
+      // Get organization with the join code
       final organization = await _supabase
           .from('organizations')
           .select('id, name')
-          .eq('join_code', numericCode)
-          .limit(1)
-          .single()
-          .timeout(const Duration(seconds: 10));
+          .eq('join_code', int.parse(joinCode))
+          .single();
 
-      final existingMembership = await _supabase
-          .from('user_organization_membership')
-          .select()
-          .eq('user_id', user.id)
-          .eq('organization_id', organization['id'])
-          .maybeSingle();
-
-      if (existingMembership != null) {
-        throw Exception('Already member of ${organization['name']}');
-      }
-
+      // Add user to the new organization
       await _supabase.from('user_organization_membership').insert({
         'user_id': user.id,
         'organization_id': organization['id'],
-        'role': 'employee',
+        'role': 'member',
+        'created_at': DateTime.now().toIso8601String(),
       });
 
-      _showSuccessSnackbar('Joined ${organization['name']} successfully!');
+      // Refresh data
       await _fetchOrganizations();
-    } on PostgrestException catch (e) {
-      _handleSupabaseError(e, 'Organization not found');
-    } on FormatException catch (e) {
-      _showErrorSnackbar(e.message);
+      _showSuccessSnackbar('Joined ${organization['name']} successfully!');
     } catch (e) {
-      _showErrorSnackbar(e.toString());
+      _showErrorSnackbar('Failed to join organization: ${e.toString()}');
     } finally {
       setState(() => _isLoading = false);
     }

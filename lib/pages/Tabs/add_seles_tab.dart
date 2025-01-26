@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:sdihc/pages/functionPages/inventory_screen.dart';
+import 'package:sdihc/pages/functionPages/submit_bill_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddSalesTab extends StatefulWidget {
@@ -197,6 +199,32 @@ class _AddSalesTabState extends State<AddSalesTab> {
                           onPressed: _addSalesData,
                           child: const Text('Add Sales'),
                         ),
+                  SizedBox(
+                    height: 90,
+                  ),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const SubmitBillScreen()),
+                            );
+                          },
+                          child: Text("bill Submit")),
+                      ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const BillsScreen()),
+                            );
+                          },
+                          child: Text("bills"))
+                    ],
+                  )
                 ],
               ),
             ),
