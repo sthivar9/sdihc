@@ -37,11 +37,8 @@ class _ProfilePageState extends State<ProfilePage> {
         _error = null;
       });
 
-      // Get current user
       final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('Not authenticated');
-      }
+      if (userId == null) throw Exception('Not authenticated');
 
       // Fetch profile data
       final profileResponse = await _supabase
@@ -51,37 +48,12 @@ class _ProfilePageState extends State<ProfilePage> {
           .single();
 
       // Fetch organization details
-      final organizationResponse = await _supabase
-          .from('organizations')
-          .select('name, id')
-          .eq('owner_id', userId)
-          .single()
-          .execute();
-
-      Map<String, dynamic> orgDetails = {};
-      if (organizationResponse.status == 200) {
-        orgDetails = organizationResponse.data;
-      }
-
-      // Fetch member count
-      final memberCountResponse = await _supabase
-          .from('user_organization_membership')
-          .select('id', const FetchOptions(count: CountOption.exact))
-          .eq('organization_id', orgDetails['id'])
-          .execute();
-
-      int memberCount = 0; // Initialize with a default value
-      if (memberCountResponse.status == 200) {
-        memberCount = memberCountResponse.count ?? 0; // Use null-aware operator
-      }
+      final organizationDetails = await _fetchOrganizationDetails();
 
       setState(() {
         _profile = profileResponse;
-        _classIdController.text = _profile!['class_id']?.toString() ?? '';
-        _profile!['organization'] = {
-          'name': orgDetails['name'],
-          'memberCount': memberCount
-        };
+        _classIdController.text = _profile?['class_id']?.toString() ?? '';
+        _profile?['organization'] = organizationDetails;
         _loading = false;
       });
     } catch (error) {
@@ -89,6 +61,49 @@ class _ProfilePageState extends State<ProfilePage> {
         _error = error.toString();
         _loading = false;
       });
+    }
+  }
+
+  Future<Map<String, dynamic>> _fetchOrganizationDetails() async {
+    try {
+      final organizationId = await _getCurrentOrganizationId();
+      if (organizationId == null) {
+        throw Exception('No organization found for the current user.');
+      }
+
+      // Fetch organization name
+      final organizationResponse = await Supabase.instance.client
+          .from('organizations')
+          .select('name')
+          .eq('id', organizationId)
+          .single()
+          .execute();
+
+      if (organizationResponse.status != 200) {
+        throw Exception('Failed to fetch organization details: ');
+      }
+
+      final organizationName = organizationResponse.data['name'];
+
+      // Fetch member count
+      final memberCountResponse = await Supabase.instance.client
+          .from('user_organization_membership')
+          .select('id', const FetchOptions(count: CountOption.exact))
+          .eq('organization_id', organizationId)
+          .execute();
+
+      if (memberCountResponse.status != 200) {
+        throw Exception('Failed to fetch member count: ');
+      }
+
+      final memberCount = memberCountResponse.count ?? 0;
+
+      return {
+        'name': organizationName,
+        'memberCount': memberCount,
+      };
+    } catch (e) {
+      throw Exception('Error fetching organization details: $e');
     }
   }
 
@@ -100,11 +115,8 @@ class _ProfilePageState extends State<ProfilePage> {
       });
 
       final userId = _supabase.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('Not authenticated');
-      }
+      if (userId == null) throw Exception('Not authenticated');
 
-      // Update class_id
       await _supabase.from('profiles').update({
         'class_id': _classIdController.text,
       }).eq('user_id', userId);
@@ -128,9 +140,10 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _logout() async {
     try {
       await _supabase.auth.signOut();
-      // Navigate back to login or splash screen after logout
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => const AuthGate()));
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const AuthGate()),
+      );
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error logging out: $error')),
@@ -140,7 +153,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildMemberCountWidget() {
     return Container(
-      padding: EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         color: Colors.blue.shade100,
         borderRadius: BorderRadius.circular(8.0),
@@ -148,32 +161,114 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.people, color: Colors.blue),
-          SizedBox(width: 4),
+          const Icon(Icons.people, color: Colors.blue),
+          const SizedBox(width: 4),
           Text(
             '${_profile?['organization']['memberCount'] ?? 0} Members',
-            style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.blue,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
     );
   }
 
+  Future<String?> _getCurrentOrganizationId() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return null;
+
+    final response = await Supabase.instance.client
+        .from('user_organization_membership')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .execute();
+
+    if (response.status != 200) {
+      throw Exception('Failed to fetch organization ID: ');
+    }
+
+    return response.data?['organization_id'] as String?;
+  }
+
+  Future<int> _getMemberCount(String organizationId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('user_organization_membership')
+          .select('id', const FetchOptions(count: CountOption.exact))
+          .eq('organization_id', organizationId)
+          .execute();
+
+      if (response.status != 200) {
+        throw Exception('Failed to fetch member count: ');
+      }
+
+      return response.count ?? 0; // Return the member count or 0 if null
+    } catch (e) {
+      throw Exception('Error fetching member count: $e');
+    }
+  }
+
   Widget _buildOrganizationNameWidget() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: Text(
-        _profile?['organization']['name'] ?? 'No Organization',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: Colors.black87,
-        ),
-      ),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _fetchOrganizationDetails(), // Fetch organization details
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator(); // Show loading indicator
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Text(
+            'Error: ${snapshot.error ?? "No organization found"}',
+            style: const TextStyle(color: Colors.red),
+          );
+        }
+
+        final organizationName = snapshot.data!['name'];
+        final memberCount = snapshot.data!['memberCount'];
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Organization Name
+              Text(
+                organizationName ?? 'No Organization',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(
+                  width: 8), // Add spacing between name and member count
+              // Member Count
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$memberCount Members',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -185,7 +280,7 @@ class _ProfilePageState extends State<ProfilePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () => _logout(),
+            onPressed: _logout,
           ),
         ],
       ),
@@ -236,17 +331,18 @@ class _ProfilePageState extends State<ProfilePage> {
                         'Organization:',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
+                      const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           _buildOrganizationNameWidget(),
-                          SizedBox(width: 20),
-                          _buildMemberCountWidget(),
+                          const SizedBox(width: 16),
+                          //_buildMemberCountWidget(),
                         ],
                       ),
-                      SizedBox(
-                        height: 20,
-                      ),
+                      const SizedBox(height: 20),
+
+                      // Buttons for editing and viewing members
                       Row(
                         children: [
                           ElevatedButton(
@@ -254,24 +350,28 @@ class _ProfilePageState extends State<ProfilePage> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) =>
-                                        const EditOrganizationPage()),
+                                  builder: (context) =>
+                                      const EditOrganizationPage(),
+                                ),
                               );
                             },
-                            child: Text("Edit Organizations"),
+                            child: const Text("Edit Organizations"),
                           ),
+                          const SizedBox(width: 16),
                           ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          const OrganizationMembersScreen()),
-                                );
-                              },
-                              child: Text("see members")),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const OrganizationMembersScreen(),
+                                ),
+                              );
+                            },
+                            child: const Text("See Members"),
+                          ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),

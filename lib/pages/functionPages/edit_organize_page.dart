@@ -12,7 +12,10 @@ class EditOrganizationPage extends StatefulWidget {
 class _EditOrganizationPageState extends State<EditOrganizationPage> {
   final _supabase = Supabase.instance.client;
   List<Map<String, dynamic>> _organizations = [];
+  final _organizationNameController = TextEditingController();
   bool _isLoading = false;
+  bool _loading = false;
+  String? _error;
 
   final TextEditingController _addMemberEmailController =
       TextEditingController();
@@ -23,6 +26,7 @@ class _EditOrganizationPageState extends State<EditOrganizationPage> {
   void initState() {
     super.initState();
     _fetchOrganizations();
+    _fetchOrganizationName();
   }
 
   @override
@@ -30,6 +34,7 @@ class _EditOrganizationPageState extends State<EditOrganizationPage> {
     _addMemberEmailController.dispose();
     _joinCodeController.dispose();
     _newOrgNameController.dispose();
+    _organizationNameController.dispose();
     super.dispose();
   }
 
@@ -156,28 +161,90 @@ class _EditOrganizationPageState extends State<EditOrganizationPage> {
     }
   }
 
+  Future<void> _fetchOrganizationName() async {
+    try {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('Not authenticated');
+
+      // Fetch the organization name
+      final response = await _supabase
+          .from('organizations')
+          .select('name')
+          .eq('owner_id', userId)
+          .single()
+          .execute();
+
+      if (response.status != 200) {
+        throw Exception('Failed to fetch organization name: ');
+      }
+
+      final organizationName = response.data['name'];
+      _organizationNameController.text = organizationName;
+
+      setState(() {
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _updateOrganizationName() async {
+    try {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('Not authenticated');
+
+      final newName = _organizationNameController.text.trim();
+      if (newName.isEmpty) {
+        throw Exception('Organization name cannot be empty');
+      }
+
+      // Update the organization name
+      final response = await _supabase
+          .from('organizations')
+          .update({'name': newName})
+          .eq('owner_id', userId)
+          .execute();
+
+      if (response.status != 200) {
+        throw Exception('Failed to update organization name: ');
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Organization name updated successfully!')),
+      );
+
+      setState(() {
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating organization name: $_error')),
+      );
+    }
+  }
+
   int generateJoinCode() {
     final random = Random();
     return random.nextInt(900000) + 100000;
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchOrganizationMembers(
-      String orgId) async {
-    try {
-      final response = await _supabase
-          .from('user_organization_membership')
-          .select('''
-            role, 
-            profiles:user_id (email, full_name)
-          ''')
-          .eq('organization_id', orgId)
-          .order('created_at', ascending: true);
-
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      _showErrorSnackbar('Failed to load members');
-      return [];
-    }
   }
 
   Future<void> _fetchOrganizations() async {
@@ -221,6 +288,25 @@ class _EditOrganizationPageState extends State<EditOrganizationPage> {
       _showErrorSnackbar(e.toString());
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<String?> fetchOrganizationJoinCode(String organizationId) async {
+    try {
+      final response = await _supabase
+          .from('organizations')
+          .select('join_code')
+          .eq('id', organizationId)
+          .single();
+
+      print('Join Code Response: $response'); // Debugging
+
+      // Extract join_code and convert it to a String
+      final joinCode = response['join_code'];
+      return joinCode?.toString(); // Convert to String if not null
+    } catch (e) {
+      print('Error fetching join code: $e'); // Debugging
+      return null;
     }
   }
 
@@ -342,6 +428,26 @@ class _EditOrganizationPageState extends State<EditOrganizationPage> {
     );
   }
 
+  void _showJoinCodeDialog(String organizationId) async {
+    final joinCode = await fetchOrganizationJoinCode(organizationId);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Organization Join Code'),
+        content: Text(
+          joinCode ?? 'No join code found for this organization.',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -378,37 +484,40 @@ class _EditOrganizationPageState extends State<EditOrganizationPage> {
                     label: 'New Org',
                     onPressed: _showAddOrganizationDialog,
                   ),
+                  _ActionButton(
+                    icon: Icons.code,
+                    label: 'Show Join Code',
+                    onPressed: () {
+                      if (_organizations.isNotEmpty) {
+                        _showJoinCodeDialog(_organizations.first['id']);
+                      }
+                    },
+                  ),
                 ],
               ),
-            ), /*
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : RefreshIndicator(
-                      onRefresh: _fetchOrganizations,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _organizations.length,
-                        separatorBuilder: (_, __) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final org = _organizations[index];
-                          return ListTile(
-                            title: Text(org['name'] ?? 'Unnamed Organization'),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Code: ${org['join_code'] ?? 'N/A'}'),
-                                Text(
-                                    'Created: ${_formatDate(org['created_at'])}'),
-                              ],
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
-                          );
-                        },
-                      ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // Organization Name Text Field
+                  TextField(
+                    controller: _organizationNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Organization Name',
+                      hintText: 'Enter new organization name',
                     ),
-            ),*/
-            //ElevatedButton(onPressed: () {}, child: Text("see members")),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Save Button
+                  ElevatedButton(
+                    onPressed: _updateOrganizationName,
+                    child: const Text('Save Changes'),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
