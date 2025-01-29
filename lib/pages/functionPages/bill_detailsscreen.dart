@@ -27,9 +27,22 @@ class BillDetailsScreen extends StatelessWidget {
           double totalProfitPercent = 0;
 
           for (var item in items) {
-            totalBulkCostPrice += (item['bulk_cost_price'] ?? 0.0) as double;
-            totalMarginOfProfit += (item['margin_of_profit'] ?? 0.0) as double;
-            totalProfitPercent += (item['profit_percent'] ?? 0.0) as double;
+            final bulkCostPrice = (item['bulk_cost_price'] ?? 0.0) as double;
+            final marginOfProfit = (item['margin_of_profit'] ?? 0.0) as double;
+            final profitPercent = (item['profit_percent'] ?? 0.0) as double;
+
+            totalBulkCostPrice += bulkCostPrice;
+            totalMarginOfProfit += marginOfProfit;
+
+            // Calculate weighted profit percentage
+            totalProfitPercent += bulkCostPrice * profitPercent;
+          }
+
+          // Calculate weighted average profit percentage
+          if (totalBulkCostPrice > 0) {
+            totalProfitPercent = totalProfitPercent / totalBulkCostPrice;
+          } else {
+            totalProfitPercent = 0; // Avoid division by zero
           }
 
           return Column(

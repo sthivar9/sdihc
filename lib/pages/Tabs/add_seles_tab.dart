@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sdihc/pages/Tabs/newAddSalesTab.dart';
 import 'package:sdihc/pages/functionPages/inventory_screen.dart';
 import 'package:sdihc/pages/functionPages/submit_bill_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -147,88 +148,100 @@ class _AddSalesTabState extends State<AddSalesTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Add Sales Data',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Sales Amount',
-                      border: OutlineInputBorder(),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Add Sales Data',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _selectedDate == null
-                              ? 'No date selected'
-                              : 'Date: ${_selectedDate!.toLocal()}'
-                                  .split(' ')[0],
-                        ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _amountController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Sales Amount',
+                        border: OutlineInputBorder(),
                       ),
-                      ElevatedButton(
-                        onPressed: _pickDate,
-                        child: const Text('Pick Date'),
-                      ),
-                    ],
-                  ),
-                  TextField(
-                    controller: _manualClassIdController,
-                    decoration: const InputDecoration(
-                      labelText: 'Class ID (optional)',
-                      hintText: 'Enter Class ID to share data',
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : ElevatedButton(
-                          onPressed: _addSalesData,
-                          child: const Text('Add Sales'),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _selectedDate == null
+                                ? 'No date selected'
+                                : 'Date: ${_selectedDate!.toLocal()}'
+                                    .split(' ')[0],
+                          ),
                         ),
-                  SizedBox(
-                    height: 90,
-                  ),
-                  Row(
-                    children: [
-                      ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      const SubmitBillScreen()),
-                            );
-                          },
-                          child: Text("bill Submit")),
-                      ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => const BillsScreen()),
-                            );
-                          },
-                          child: Text("bills"))
-                    ],
-                  )
-                ],
+                        ElevatedButton(
+                          onPressed: _pickDate,
+                          child: const Text('Pick Date'),
+                        ),
+                      ],
+                    ),
+                    TextField(
+                      controller: _manualClassIdController,
+                      decoration: const InputDecoration(
+                        labelText: 'Class ID (optional)',
+                        hintText: 'Enter Class ID to share data',
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : ElevatedButton(
+                            onPressed: _addSalesData,
+                            child: const Text('Add Sales'),
+                          ),
+                    SizedBox(
+                      height: 90,
+                    ),
+                    Row(
+                      children: [
+                        ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const SubmitBillScreen()),
+                              );
+                            },
+                            child: Text("bill Submit")),
+                        ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const BillsScreen()),
+                              );
+                            },
+                            child: Text("bills")),
+                        ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const Addpage()),
+                              );
+                            },
+                            child: Text("Add Page")),
+                      ],
+                    )
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
