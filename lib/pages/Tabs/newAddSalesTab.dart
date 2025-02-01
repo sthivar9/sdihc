@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 class Addpage extends StatefulWidget {
   const Addpage({super.key});
@@ -11,100 +12,121 @@ class _AddpageState extends State<Addpage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+            gradient: LinearGradient(begin: Alignment.topCenter, colors: [
+          Colors.orange.shade900,
+          Colors.orange.shade800,
+          Colors.orange.shade400,
+        ])),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Colors.greenAccent,
-                    image: DecorationImage(
-                      image: AssetImage('assets/images/image.png'),
-                      fit: BoxFit.cover,
-                    ),
-                  ), // Placeholder for image
-                ),
-                Positioned(
-                  top: 40,
-                  left: 16,
-                  child: Icon(Icons.search, color: Colors.white),
-                ),
-              ],
+            const SizedBox(
+              height: 80,
             ),
-            SizedBox(height: 16),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text("Subjects",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text("Recommendations for you",
-                  style: TextStyle(fontSize: 14, color: Colors.grey)),
-            ),
-            SizedBox(height: 16),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Container(
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Center(
-                          child: Text("Mathematics",
-                              style: TextStyle(
-                                  color: Colors.white, fontSize: 16))),
-                    ),
+                  Text(
+                    "Organization's",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 35,
+                        fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Container(
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Center(
-                          child: Text("Geography",
-                              style: TextStyle(
-                                  color: Colors.white, fontSize: 16))),
+                  Text(
+                    "Management",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 16),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text("Your Schedule",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(
+              height: 20,
             ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text("Next lessons",
-                  style: TextStyle(fontSize: 14, color: Colors.grey)),
-            ),
-            SizedBox(height: 16),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+            Expanded(
               child: Container(
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                    child: Text("Biology\nChapter 3: Animal Kingdom",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white, fontSize: 16))),
-              ),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white54,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            height: 10,
+                          ),
+                          Text(
+                            "Bills",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 30,
+                            ),
+                          ),
+                          SizedBox(
+                            height: 10,
+                          ),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                Container(
+                                  height: 150,
+                                  width: 150,
+                                  padding: EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                      color: Colors.white70,
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                            color:
+                                                Color.fromRGBO(225, 95, 27, 3),
+                                            blurRadius: 20,
+                                            offset: Offset(0, 10))
+                                      ]),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 10),
+                                  child: Container(
+                                    height: 150,
+                                    width: 150,
+                                    padding: EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                        color: Colors.white70,
+                                        borderRadius: BorderRadius.circular(10),
+                                        boxShadow: [
+                                          BoxShadow(
+                                              color: Color.fromRGBO(
+                                                  225, 95, 27, 3),
+                                              blurRadius: 20,
+                                              offset: Offset(0, 10))
+                                        ]),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            height: 10,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )),
             ),
           ],
         ),
