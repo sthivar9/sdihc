@@ -1,6 +1,8 @@
+// ignore_for_file: camel_case_types
+
 import 'package:flutter/material.dart';
 import 'package:sdihc/pages/Tabs/add_seles_tab.dart';
-import 'package:sdihc/pages/functionPages/inventory_screen.dart';
+import 'package:sdihc/pages/functionPages/billScreen.dart';
 import 'package:sdihc/pages/functionPages/submit_bill_screen.dart';
 
 class newAddPage extends StatefulWidget {
@@ -14,11 +16,13 @@ class GridItem {
   final String imagePath;
   final String title;
   final Widget screen;
+  final Color color;
 
   GridItem({
     required this.imagePath,
     required this.title,
     required this.screen,
+    required this.color,
   });
 }
 
@@ -28,23 +32,26 @@ class _newAddPageState extends State<newAddPage> {
       imagePath: 'assets/images/billlist.jpg',
       title: 'Bill List',
       screen: const BillsScreen(),
+      color: Colors.pink.shade300,
     ),
     GridItem(
       imagePath: 'assets/images/bill1.jpg',
       title: 'Submit bill',
       screen: const SubmitBillScreen(),
+      color: Colors.green.shade300,
     ),
     GridItem(
       imagePath: 'assets/images/chart2.jpg',
       title: 'Spending Chart',
       screen: const AddSalesTab(),
+      color: Colors.purple.shade300,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade600,
+      backgroundColor: Colors.grey.shade200,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -57,7 +64,7 @@ class _newAddPageState extends State<newAddPage> {
               width: 36,
               height: 30,
               decoration: BoxDecoration(
-                  color: Colors.grey.shade800,
+                  color: Colors.grey.shade400,
                   borderRadius: BorderRadius.circular(10)),
               child: Center(
                 child: Text("0"),
@@ -72,7 +79,7 @@ class _newAddPageState extends State<newAddPage> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                Container(
+                /*Container(
                   height: 250,
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -105,7 +112,7 @@ class _newAddPageState extends State<newAddPage> {
                       ],
                     ),
                   ),
-                ),
+                ),*/
                 SizedBox(
                   height: 20,
                 ),
@@ -129,10 +136,11 @@ class _newAddPageState extends State<newAddPage> {
                                 child: Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(20),
-                                    image: DecorationImage(
+                                    color: item.color,
+                                    /*image: DecorationImage(
                                       image: AssetImage(item.imagePath),
                                       fit: BoxFit.cover,
-                                    ),
+                                    ),*/
                                   ),
                                   child: Align(
                                     alignment: Alignment.bottomLeft,
@@ -141,16 +149,16 @@ class _newAddPageState extends State<newAddPage> {
                                       child: Text(
                                         item.title,
                                         style: const TextStyle(
-                                          color: Colors.deepPurple,
+                                          color: Colors.white,
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
-                                          shadows: [
+                                          /*shadows: [
                                             Shadow(
                                               color: Colors.black54,
                                               blurRadius: 6,
                                               offset: Offset(2, 2),
                                             )
-                                          ],
+                                          ],*/
                                         ),
                                       ),
                                     ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:sdihc/pages/Tabs/newAddSalesTab.dart';
-import 'package:sdihc/pages/functionPages/inventory_screen.dart';
+import 'package:sdihc/pages/Tabs/newProfilePage.dart';
+import 'package:sdihc/pages/functionPages/billScreen.dart';
 import 'package:sdihc/pages/functionPages/submit_bill_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -231,7 +231,8 @@ class _AddSalesTabState extends State<AddSalesTab> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => const Addpage()),
+                                    builder: (context) =>
+                                        const newProfilePage()),
                               );
                             },
                             child: Text("Add Page")),

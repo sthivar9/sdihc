@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:sdihc/widgets/monthlySummaryCard.dart';
+import 'package:sdihc/widgets/selling_chart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' show min, max;
@@ -181,103 +183,110 @@ class _SalesChartPageState extends State<SalesChartPage> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const Text(
-                  "   Trends",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(
-                  height: 8,
-                ),
-                AspectRatio(
-                  aspectRatio: 2,
-                  child: Container(
-                    child: _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : _spots.isEmpty
-                            ? const Center(child: Text('No data available'))
-                            : Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: LineChart(
-                                  LineChartData(
-                                    minX:
-                                        _minX.millisecondsSinceEpoch.toDouble(),
-                                    maxX:
-                                        _maxX.millisecondsSinceEpoch.toDouble(),
-                                    minY: _minY * 0.9,
-                                    maxY: _maxY * 1.1,
-                                    gridData: const FlGridData(show: true),
-                                    titlesData: FlTitlesData(
-                                      leftTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          reservedSize: 40,
-                                          getTitlesWidget: (value, meta) {
-                                            return Text(
-                                              value.toStringAsFixed(2),
-                                              style:
-                                                  const TextStyle(fontSize: 10),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      bottomTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          reservedSize: 30,
-                                          interval: 24 *
-                                              60 *
-                                              60 *
-                                              1000, // 1 day interval
-                                          getTitlesWidget: (value, meta) {
-                                            final date = DateTime
-                                                .fromMillisecondsSinceEpoch(
-                                                    value.toInt());
-                                            return Padding(
-                                              padding:
-                                                  const EdgeInsets.all(4.0),
-                                              child: Text(
-                                                DateFormat('MM/dd')
-                                                    .format(date),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  const Text(
+                    "   Trends",
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
+                  ),
+                  const SizedBox(
+                    height: 8,
+                  ),
+                  MonthlyFinancialSummary(),
+                  Past7DaysSellingPriceChart(),
+                  AspectRatio(
+                    aspectRatio: 2,
+                    child: Container(
+                      child: _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : _spots.isEmpty
+                              ? const Center(child: Text('No data available'))
+                              : Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: LineChart(
+                                    LineChartData(
+                                      minX: _minX.millisecondsSinceEpoch
+                                          .toDouble(),
+                                      maxX: _maxX.millisecondsSinceEpoch
+                                          .toDouble(),
+                                      minY: _minY * 0.9,
+                                      maxY: _maxY * 1.1,
+                                      gridData: const FlGridData(show: true),
+                                      titlesData: FlTitlesData(
+                                        leftTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 40,
+                                            getTitlesWidget: (value, meta) {
+                                              return Text(
+                                                value.toStringAsFixed(2),
                                                 style: const TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
+                                                    fontSize: 10),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        bottomTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 30,
+                                            interval: 24 *
+                                                60 *
+                                                60 *
+                                                1000, // 1 day interval
+                                            getTitlesWidget: (value, meta) {
+                                              final date = DateTime
+                                                  .fromMillisecondsSinceEpoch(
+                                                      value.toInt());
+                                              return Padding(
+                                                padding:
+                                                    const EdgeInsets.all(4.0),
+                                                child: Text(
+                                                  DateFormat('MM/dd')
+                                                      .format(date),
+                                                  style: const TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                                 ),
-                                              ),
-                                            );
-                                          },
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        rightTitles: const AxisTitles(
+                                          sideTitles:
+                                              SideTitles(showTitles: false),
+                                        ),
+                                        topTitles: const AxisTitles(
+                                          sideTitles:
+                                              SideTitles(showTitles: false),
                                         ),
                                       ),
-                                      rightTitles: const AxisTitles(
-                                        sideTitles:
-                                            SideTitles(showTitles: false),
-                                      ),
-                                      topTitles: const AxisTitles(
-                                        sideTitles:
-                                            SideTitles(showTitles: false),
-                                      ),
+                                      lineBarsData: [
+                                        LineChartBarData(
+                                          spots: _spots,
+                                          isCurved: true,
+                                          color: Color.fromRGBO(72, 50, 174, 1),
+                                          barWidth: 3,
+                                          dotData: const FlDotData(show: false),
+                                          belowBarData: BarAreaData(
+                                              show: true,
+                                              color: Colors.blueAccent),
+                                        ),
+                                      ],
                                     ),
-                                    lineBarsData: [
-                                      LineChartBarData(
-                                        spots: _spots,
-                                        isCurved: true,
-                                        color: Color.fromRGBO(72, 50, 174, 1),
-                                        barWidth: 3,
-                                        dotData: const FlDotData(show: false),
-                                        belowBarData: BarAreaData(
-                                            show: true,
-                                            color: Colors.blueAccent),
-                                      ),
-                                    ],
                                   ),
                                 ),
-                              ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

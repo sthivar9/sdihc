@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sdihc/pages/Tabs/home_tab.dart';
-import 'package:sdihc/pages/Tabs/profile_tab.dart';
+import 'package:sdihc/pages/Tabs/newProfilePage.dart';
 import 'package:sdihc/pages/functionPages/options.dart';
 
 class HomePage extends StatefulWidget {
@@ -17,7 +17,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _tabs = [
     const SalesChartPage(), // Line chart of daily sales
     const newAddPage(), // Form to add sales
-    const ProfilePage(), // User profile
+    const newProfilePage(), // User profile
   ];
 
   @override

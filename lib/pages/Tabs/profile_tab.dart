@@ -40,14 +40,12 @@ class _ProfilePageState extends State<ProfilePage> {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw Exception('Not authenticated');
 
-      // Fetch profile data
       final profileResponse = await _supabase
           .from('profiles')
           .select()
           .eq('user_id', userId)
           .single();
 
-      // Fetch organization details
       final organizationDetails = await _fetchOrganizationDetails();
 
       setState(() {
@@ -71,36 +69,20 @@ class _ProfilePageState extends State<ProfilePage> {
         throw Exception('No organization found for the current user.');
       }
 
-      // Fetch organization name
-      final organizationResponse = await Supabase.instance.client
+      final organizationResponse = await _supabase
           .from('organizations')
           .select('name')
           .eq('id', organizationId)
-          .single()
-          .execute();
+          .single();
 
-      if (organizationResponse.status != 200) {
-        throw Exception('Failed to fetch organization details: ');
-      }
-
-      final organizationName = organizationResponse.data['name'];
-
-      // Fetch member count
-      final memberCountResponse = await Supabase.instance.client
+      final memberCountResponse = await _supabase
           .from('user_organization_membership')
           .select('id', const FetchOptions(count: CountOption.exact))
-          .eq('organization_id', organizationId)
-          .execute();
-
-      if (memberCountResponse.status != 200) {
-        throw Exception('Failed to fetch member count: ');
-      }
-
-      final memberCount = memberCountResponse.count ?? 0;
+          .eq('organization_id', organizationId);
 
       return {
-        'name': organizationName,
-        'memberCount': memberCount,
+        'name': organizationResponse['name'],
+        'memberCount': memberCountResponse.count ?? 0,
       };
     } catch (e) {
       throw Exception('Error fetching organization details: $e');
@@ -122,17 +104,17 @@ class _ProfilePageState extends State<ProfilePage> {
       }).eq('user_id', userId);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully!')),
+        const SnackBar(content: Text('Class ID updated successfully!')),
       );
 
-      await _loadProfile(); // Reload profile data
+      await _loadProfile();
     } catch (error) {
       setState(() {
         _error = error.toString();
         _loading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating profile: $_error')),
+        SnackBar(content: Text('Error updating Class ID: $_error')),
       );
     }
   }
@@ -151,72 +133,25 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Widget _buildMemberCountWidget() {
-    return Container(
-      padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade100,
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.people, color: Colors.blue),
-          const SizedBox(width: 4),
-          Text(
-            '${_profile?['organization']['memberCount'] ?? 0} Members',
-            style: const TextStyle(
-              color: Colors.blue,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<String?> _getCurrentOrganizationId() async {
-    final user = Supabase.instance.client.auth.currentUser;
+    final user = _supabase.auth.currentUser;
     if (user == null) return null;
 
-    final response = await Supabase.instance.client
+    final response = await _supabase
         .from('user_organization_membership')
         .select('organization_id')
         .eq('user_id', user.id)
-        .maybeSingle()
-        .execute();
+        .maybeSingle();
 
-    if (response.status != 200) {
-      throw Exception('Failed to fetch organization ID: ');
-    }
-
-    return response.data?['organization_id'] as String?;
+    return response['organization_id'] as String?;
   }
 
-  Future<int> _getMemberCount(String organizationId) async {
-    try {
-      final response = await Supabase.instance.client
-          .from('user_organization_membership')
-          .select('id', const FetchOptions(count: CountOption.exact))
-          .eq('organization_id', organizationId)
-          .execute();
-
-      if (response.status != 200) {
-        throw Exception('Failed to fetch member count: ');
-      }
-
-      return response.count ?? 0; // Return the member count or 0 if null
-    } catch (e) {
-      throw Exception('Error fetching member count: $e');
-    }
-  }
-
-  Widget _buildOrganizationNameWidget() {
+  Widget _buildOrganizationCard() {
     return FutureBuilder<Map<String, dynamic>>(
-      future: _fetchOrganizationDetails(), // Fetch organization details
+      future: _fetchOrganizationDetails(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator(); // Show loading indicator
+          return const CircularProgressIndicator();
         }
 
         if (snapshot.hasError || !snapshot.hasData) {
@@ -229,46 +164,147 @@ class _ProfilePageState extends State<ProfilePage> {
         final organizationName = snapshot.data!['name'];
         final memberCount = snapshot.data!['memberCount'];
 
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(8.0),
+        return Card(
+          elevation: 4,
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Organization Name
-              Text(
-                organizationName ?? 'No Organization',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const OrganizationMembersScreen(),
                 ),
-              ),
-              const SizedBox(
-                  width: 8), // Add spacing between name and member count
-              // Member Count
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '$memberCount Members',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Organization',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Colors.deepPurple,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.deepPurple),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const EditOrganizationPage(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    organizationName ?? 'No Organization',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.people, color: Colors.deepPurple),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$memberCount Members',
+                        style: const TextStyle(
+                          color: Colors.deepPurple,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildClassIdCard() {
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text('Update Class ID'),
+                content: TextField(
+                  controller: _classIdController,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter Class ID',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      _updateClassId();
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Update'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Class ID',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.deepOrange,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              Text(
+                _profile?['class_id']?.toString() ?? 'Not Set',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.deepOrange,
                 ),
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -277,9 +313,10 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
+        backgroundColor: Colors.deepPurple,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout, color: Colors.white),
             onPressed: _logout,
           ),
         ],
@@ -288,90 +325,46 @@ class _ProfilePageState extends State<ProfilePage> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text('Error: $_error'))
-              : Padding(
+              : SingleChildScrollView(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Email display
-                      Text(
-                        'Email:',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(_supabase.auth.currentUser?.email ?? 'No email'),
-                      const SizedBox(height: 24),
-
-                      // Class ID field
-                      Text(
-                        'Class ID:',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _classIdController,
-                              decoration: const InputDecoration(
-                                hintText: 'Enter class ID',
+                      Card(
+                        elevation: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Email',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(
+                                      color: Colors.deepPurple,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          ElevatedButton(
-                            onPressed: _updateClassId,
-                            child: const Text('Update Class'),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Organization Details
-                      Text(
-                        'Organization:',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          _buildOrganizationNameWidget(),
-                          const SizedBox(width: 16),
-                          //_buildMemberCountWidget(),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Buttons for editing and viewing members
-                      Row(
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const EditOrganizationPage(),
+                              const SizedBox(height: 8),
+                              Text(
+                                _supabase.auth.currentUser?.email ?? 'No email',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black87,
                                 ),
-                              );
-                            },
-                            child: const Text("Edit Organizations"),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const OrganizationMembersScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text("See Members"),
-                          ),
-                        ],
+                        ),
                       ),
+                      _buildClassIdCard(),
+                      _buildOrganizationCard(),
                     ],
                   ),
                 ),

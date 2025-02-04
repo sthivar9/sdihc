@@ -26,33 +26,97 @@ class _BillsScreenState extends State<BillsScreen> {
           }
           final bills = snapshot.data ?? [];
 
-          return ListView.builder(
+          // Group bills by date categories
+          final Map<String, List<Map<String, dynamic>>> groupedBills =
+              _groupBillsByDate(bills);
+
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: bills.length,
-            itemBuilder: (context, index) {
-              final bill = bills[index];
-              return Card(
-                child: ListTile(
-                  title: Text('Bill #${bill['id'].substring(0, 6)}'),
-                  subtitle: Text(DateFormat.yMd().format(
-                    DateTime.parse(bill['created_at'] as String),
-                  )),
-                  trailing: Text(
-                    '₹${(bill['total_bulk_cost_price'] ?? 0.0).toStringAsFixed(2)}',
-                  ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          BillDetailsScreen(billId: bill['id'] as String),
-                    ),
-                  ),
-                ),
-              );
-            },
+            children: [
+              _buildSection('Today', groupedBills['Today'] ?? []),
+              _buildSection('Yesterday', groupedBills['Yesterday'] ?? []),
+              _buildSection('Last Week', groupedBills['Last Week'] ?? []),
+              _buildSection('Older', groupedBills['Older'] ?? []),
+            ],
           );
         },
       ),
+    );
+  }
+
+  // Helper function to group bills by date categories
+  Map<String, List<Map<String, dynamic>>> _groupBillsByDate(
+      List<Map<String, dynamic>> bills) {
+    final Map<String, List<Map<String, dynamic>>> groupedBills = {
+      'Today': [],
+      'Yesterday': [],
+      'Last Week': [],
+      'Older': [],
+    };
+
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime yesterday = today.subtract(const Duration(days: 1));
+    final DateTime lastWeek = today.subtract(const Duration(days: 7));
+
+    for (var bill in bills) {
+      final DateTime billDate =
+          DateTime.parse(bill['created_at'] as String).toLocal();
+      final DateTime billDateOnly =
+          DateTime(billDate.year, billDate.month, billDate.day);
+
+      if (billDateOnly == today) {
+        groupedBills['Today']!.add(bill);
+      } else if (billDateOnly == yesterday) {
+        groupedBills['Yesterday']!.add(bill);
+      } else if (billDateOnly.isAfter(lastWeek)) {
+        groupedBills['Last Week']!.add(bill);
+      } else {
+        groupedBills['Older']!.add(bill);
+      }
+    }
+
+    return groupedBills;
+  }
+
+  // Helper function to build a section with a header and list of bills
+  Widget _buildSection(String title, List<Map<String, dynamic>> bills) {
+    if (bills.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
+            ),
+          ),
+        ),
+        ...bills.map((bill) => Card(
+              child: ListTile(
+                title: Text('Bill #${bill['id'].substring(0, 6)}'),
+                subtitle: Text(DateFormat.yMd().format(
+                  DateTime.parse(bill['created_at'] as String),
+                )),
+                trailing: Text(
+                  '₹${(bill['total_bulk_cost_price'] ?? 0.0).toStringAsFixed(2)}',
+                ),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        BillDetailsScreen(billId: bill['id'] as String),
+                  ),
+                ),
+              ),
+            )),
+        const SizedBox(height: 16),
+      ],
     );
   }
 
