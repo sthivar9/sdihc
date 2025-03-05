@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sdihc/auth/authGate.dart';
 import 'package:sdihc/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,7 +7,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(anonKey: supabaseAnonKey, url: supabaseUrl);
-  runApp(const MyApp());
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

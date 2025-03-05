@@ -1,97 +1,109 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sdihc/utils/organizationIdProvider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class MonthlyFinancialSummary extends StatefulWidget {
+// Riverpod FutureProvider for fetching financial data
+// Provider to fetch financial data based on the organization ID
+final monthlyFinancialProvider =
+    FutureProvider<Map<String, double>>((ref) async {
+  final orgId = await ref.watch(organizationIdProvider.future);
+  if (orgId == null) throw Exception('No organization found');
+
+  final now = DateTime.now();
+  final firstDayOfMonth = DateTime.utc(now.year, now.month, 1);
+  final lastDayOfMonth = DateTime.utc(now.year, now.month + 1, 0);
+
+  final response = await Supabase.instance.client
+      .from('daily_stats')
+      .select('total_cost, total_profit, total_selling_price')
+      .eq('org_id', orgId)
+      .gte('date', firstDayOfMonth.toIso8601String())
+      .lte('date', lastDayOfMonth.toIso8601String())
+      .execute();
+
+  if (response.status != 200) {
+    throw Exception('Failed to fetch data: HTTP ${response.status}');
+  }
+
+  final List<dynamic> data = response.data ?? [];
+
+  double expense = 0, earnings = 0, turnover = 0;
+  for (var entry in data) {
+    expense += (entry['total_cost'] ?? 0).toDouble();
+    earnings += (entry['total_profit'] ?? 0).toDouble();
+    turnover += (entry['total_selling_price'] ?? 0).toDouble();
+  }
+
+  return {'expense': expense, 'earnings': earnings, 'turnover': turnover};
+});
+
+// Function to fetch organization ID
+
+// Main Widget
+class MonthlyFinancialSummary extends ConsumerWidget {
   @override
-  _MonthlyFinancialSummaryState createState() =>
-      _MonthlyFinancialSummaryState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final financialSummary = ref.watch(monthlyFinancialProvider);
 
-class _MonthlyFinancialSummaryState extends State<MonthlyFinancialSummary> {
-  double _totalExpense = 0;
-  double _totalEarnings = 0;
-  double _totalTurnover = 0;
-  bool _isLoading = true;
-  String? _errorMessage;
+    return Card(
+      elevation: 4,
+      margin: EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Monthly Financial Summary',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue[800],
+              ),
+            ),
+            SizedBox(height: 16),
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchMonthlyData();
+            // Loading state
+            financialSummary.when(
+              loading: () => Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(
+                child: Text(
+                  'Error: ${err.toString()}',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+              data: (data) {
+                if (data['turnover'] == 0) {
+                  return Center(
+                      child: Text('No data available for this month'));
+                }
+
+                return GridView.count(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  childAspectRatio: 1.5,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  children: [
+                    _buildMetricCard('Expense', data['expense']!, Colors.red,
+                        Icons.arrow_downward),
+                    _buildMetricCard('Earnings', data['earnings']!,
+                        Colors.green, Icons.arrow_upward),
+                    _buildMetricCard('Turnover', data['turnover']!, Colors.blue,
+                        Icons.bar_chart),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  Future<void> _fetchMonthlyData() async {
-    try {
-      final orgId = await _getCurrentOrganizationId();
-      if (orgId == null) {
-        setState(() {
-          _errorMessage = 'No organization found';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final now = DateTime.now();
-      final firstDayOfMonth = DateTime.utc(now.year, now.month, 1);
-      final lastDayOfMonth = DateTime.utc(now.year, now.month + 1, 0);
-
-      final response = await Supabase.instance.client
-          .from('daily_stats')
-          .select('total_cost, total_profit, total_selling_price')
-          .eq('org_id', orgId)
-          .gte('date', firstDayOfMonth.toIso8601String())
-          .lte('date', lastDayOfMonth.toIso8601String())
-          .execute();
-
-      if (response.status != 200) {
-        throw Exception('Failed to fetch data: HTTP ${response.status}');
-      }
-
-      final List<dynamic> data = response.data;
-
-      double expense = 0;
-      double earnings = 0;
-      double turnover = 0;
-
-      for (var entry in data) {
-        expense += entry['total_cost'] ?? 0;
-        earnings += entry['total_profit'] ?? 0;
-        turnover += entry['total_selling_price'] ?? 0;
-      }
-
-      setState(() {
-        _totalExpense = expense;
-        _totalEarnings = earnings;
-        _totalTurnover = turnover;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<String?> _getCurrentOrganizationId() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return null;
-
-    final response = await Supabase.instance.client
-        .from('user_organization_membership')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .maybeSingle()
-        .execute();
-
-    if (response.status != 200) {
-      throw Exception(
-          'Failed to fetch organization ID: HTTP ${response.status}');
-    }
-
-    return response.data?['organization_id'] as String?;
-  }
-
+  // Metric card widget
   Widget _buildMetricCard(
       String title, double value, Color color, IconData icon) {
     return Card(
@@ -124,71 +136,6 @@ class _MonthlyFinancialSummaryState extends State<MonthlyFinancialSummary> {
                 color: color,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      margin: EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Monthly Financial Summary',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue[800],
-              ),
-            ),
-            SizedBox(height: 16),
-            if (_isLoading)
-              Center(child: CircularProgressIndicator())
-            else if (_errorMessage != null)
-              Center(
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Colors.red),
-                ),
-              )
-            else if (_totalTurnover == 0)
-              Center(child: Text('No data available for this month'))
-            else
-              GridView.count(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                childAspectRatio: 1.5,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                children: [
-                  _buildMetricCard(
-                    'Expense',
-                    _totalExpense,
-                    Colors.red,
-                    Icons.arrow_downward,
-                  ),
-                  _buildMetricCard(
-                    'Earnings',
-                    _totalEarnings,
-                    Colors.green,
-                    Icons.arrow_upward,
-                  ),
-                  _buildMetricCard(
-                    'Turnover',
-                    _totalTurnover,
-                    Colors.blue,
-                    Icons.bar_chart,
-                  ),
-                ],
-              ),
           ],
         ),
       ),

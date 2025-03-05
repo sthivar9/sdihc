@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import 'package:sdihc/widgets/monthlySummaryCard.dart';
 import 'package:sdihc/widgets/selling_chart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

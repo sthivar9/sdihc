@@ -17,7 +17,7 @@ class _HomePageState extends State<HomePage> {
   final List<Widget> _tabs = [
     const SalesChartPage(), // Line chart of daily sales
     const newAddPage(), // Form to add sales
-    const newProfilePage(), // User profile
+    const NewProfilePage(), // User profile
   ];
 
   @override

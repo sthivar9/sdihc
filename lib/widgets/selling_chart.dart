@@ -1,88 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:sdihc/utils/providers.dart';
 
-class Past7DaysSellingPriceChart extends StatefulWidget {
+class Past7DaysSellingPriceChart extends ConsumerWidget {
   @override
-  _Past7DaysSellingPriceChartState createState() =>
-      _Past7DaysSellingPriceChartState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final past7DaysData = ref.watch(past7DaysDataProvider);
 
-class _Past7DaysSellingPriceChartState
-    extends State<Past7DaysSellingPriceChart> {
-  List<Map<String, dynamic>> _data = [];
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchData();
-  }
-
-  Future<void> _fetchData() async {
-    try {
-      final orgId = await _getCurrentOrganizationId();
-      if (orgId == null) {
-        setState(() {
-          _errorMessage = 'No organization found for the current user.';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final today = DateTime.now();
-      final sevenDaysAgo = today.subtract(Duration(days: 7));
-
-      final response = await Supabase.instance.client
-          .from('daily_stats')
-          .select('date, total_selling_price')
-          .eq('org_id', orgId)
-          .gte('date', sevenDaysAgo.toIso8601String())
-          .lt('date', today.toIso8601String())
-          .order('date', ascending: true)
-          .execute();
-
-      // Check HTTP status code for errors
-      if (response.status != 200) {
-        throw Exception('Failed to fetch data: HTTP ${response.status}');
-      }
-
-      setState(() {
-        _data = List<Map<String, dynamic>>.from(response.data);
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<String?> _getCurrentOrganizationId() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return null;
-
-    final response = await Supabase.instance.client
-        .from('user_organization_membership')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .maybeSingle()
-        .execute();
-
-    // Check HTTP status code for errors
-    if (response.status != 200) {
-      throw Exception(
-          'Failed to fetch organization ID: HTTP ${response.status}');
-    }
-
-    return response.data?['organization_id'] as String?;
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
       color: Colors.transparent,
       margin: EdgeInsets.all(16),
@@ -92,40 +18,26 @@ class _Past7DaysSellingPriceChartState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 16),
-            if (_isLoading)
-              Center(child: CircularProgressIndicator())
-            else if (_errorMessage != null)
-              Center(
+            past7DaysData.when(
+              loading: () => Center(child: CircularProgressIndicator()),
+              error: (error, stackTrace) => Center(
                 child: Text(
-                  _errorMessage!,
+                  "Error: ${error.toString()}",
                   style: TextStyle(color: Colors.red),
                 ),
-              )
-            else
-              Container(
-                height: 300,
-                child: SellingPriceLineChart(data: _data),
               ),
+              data: (data) => data.isEmpty
+                  ? Center(child: Text("No data available"))
+                  : Container(
+                      height: 300,
+                      child: SellingPriceLineChart(data: data),
+                    ),
+            ),
           ],
         ),
       ),
     );
   }
-}
-
-double calculateMinY(List<Map<String, dynamic>> data) {
-  double minY = data
-      .map((e) => (e["total_selling_price"] as num).toDouble())
-      .reduce((a, b) => a < b ? a : b);
-  return minY =
-      minY > 10 ? minY / 2 : 1; // Ensure small values are not at the bottom
-}
-
-double calculateMaxY(List<Map<String, dynamic>> data) {
-  double maxY = data
-      .map((e) => (e["total_selling_price"] as num).toDouble())
-      .reduce((a, b) => a > b ? a : b);
-  return maxY + 10; // Adds spacing on top
 }
 
 class SellingPriceLineChart extends StatelessWidget {
@@ -157,7 +69,7 @@ class SellingPriceLineChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Past 7 Days Inventory added cost",
+            "Past 7 Days Inventory Added Cost",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),
@@ -207,9 +119,6 @@ class SellingPriceLineChart extends StatelessWidget {
                   LineChartBarData(
                     spots: data.map((e) {
                       double yValue = e["total_selling_price"].toDouble();
-                      yValue = yValue < 5
-                          ? 5
-                          : yValue; // Ensures a minimum height for very small values
                       return FlSpot(
                           DateTime.parse(e["date"])
                               .millisecondsSinceEpoch
@@ -223,21 +132,6 @@ class SellingPriceLineChart extends StatelessWidget {
                         show: true, color: Colors.blue.withOpacity(0.3)),
                     dotData: FlDotData(show: true),
                   ),
-                  LineChartBarData(
-                    spots: data.map((e) {
-                      DateTime date = DateTime.parse(e["date"]);
-                      return FlSpot(date.millisecondsSinceEpoch.toDouble(),
-                          e["total_selling_price"].toDouble());
-                    }).toList(),
-                    isCurved: true,
-                    color: Colors.blue,
-                    barWidth: 4,
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: Colors.blue.withOpacity(0.3),
-                    ),
-                    dotData: FlDotData(show: true),
-                  ),
                 ],
               ),
             ),
@@ -246,4 +140,19 @@ class SellingPriceLineChart extends StatelessWidget {
       ),
     );
   }
+}
+
+// Helper Functions
+double calculateMinY(List<Map<String, dynamic>> data) {
+  double minY = data
+      .map((e) => (e["total_selling_price"] as num).toDouble())
+      .reduce((a, b) => a < b ? a : b);
+  return minY > 10 ? minY / 2 : 1;
+}
+
+double calculateMaxY(List<Map<String, dynamic>> data) {
+  double maxY = data
+      .map((e) => (e["total_selling_price"] as num).toDouble())
+      .reduce((a, b) => a > b ? a : b);
+  return maxY + 10;
 }

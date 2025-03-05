@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:sdihc/pages/Tabs/newProfilePage.dart';
-import 'package:sdihc/pages/functionPages/billScreen.dart';
-import 'package:sdihc/pages/functionPages/submit_bill_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddSalesTab extends StatefulWidget {
@@ -204,39 +201,6 @@ class _AddSalesTabState extends State<AddSalesTab> {
                           ),
                     SizedBox(
                       height: 90,
-                    ),
-                    Row(
-                      children: [
-                        ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const SubmitBillScreen()),
-                              );
-                            },
-                            child: Text("bill Submit")),
-                        ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => const BillsScreen()),
-                              );
-                            },
-                            child: Text("bills")),
-                        ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const newProfilePage()),
-                              );
-                            },
-                            child: Text("Add Page")),
-                      ],
                     )
                   ],
                 ),
